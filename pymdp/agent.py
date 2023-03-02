@@ -119,7 +119,7 @@ class Agent(object):
 
         # If no `num_controls` are given, then this is inferred from the shapes of the input B matrices
         if num_controls == None:
-            self.num_controls = [self.B[f].shape[2] for f in range(self.num_factors)]
+            self.num_controls = [self.B[f].shape[-1] for f in range(self.num_factors)]
         else:
             self.num_controls = num_controls
         

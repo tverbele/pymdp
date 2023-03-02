@@ -244,7 +244,10 @@ def get_expected_states(qs, B, policy):
     # get expected states over time
     for t in range(n_steps):
         for control_factor, action in enumerate(policy[t,:]):
-            qs_pi[t+1][control_factor] = B[control_factor][:,:,int(action)].dot(qs_pi[t][control_factor])
+            if B[control_factor].ndim == 3:
+                qs_pi[t+1][control_factor] = B[control_factor][:,:,int(action)].dot(qs_pi[t][control_factor])
+            else:
+                qs_pi[t+1][control_factor] = spm_dot(B[control_factor][...,int(action)],qs_pi[t])
 
     return qs_pi[1:]
  
