@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 from pymdp import inference, control, learning
 from pymdp import utils, maths
+from pymdp import tensors
 import copy
 
 class Agent(object):
@@ -63,7 +64,8 @@ class Agent(object):
         policy_sep_prior = False,
         save_belief_hist = False,
         A_factor_list = None,
-        B_factor_list = None
+        B_factor_list = None,
+        descriptor = None,
     ):
 
         ### Constant parameters ###
@@ -92,6 +94,10 @@ class Agent(object):
             )
 
         self.A = utils.to_obj_array(A)
+        if descriptor is not None:
+            # merge descriptor['states'] and descriptor['outcomes'] dicts
+            categories = {**descriptor['states'], **descriptor['outcomes']}
+            self.A = tensors.Tensors(self.A, descriptor['A']['modalities'], descriptor['A']['variables'], categories)
 
         assert utils.is_normalized(self.A), "A matrix is not normalized (i.e. A[m].sum(axis = 0) must all equal 1.0 for all modalities)"
 

@@ -6,6 +6,7 @@
 __author__: Conor Heins, Alexander Tschantz, Brennan Klein
 """
 
+import pymdp
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -266,6 +267,8 @@ def is_normalized(dist):
     return out
 
 def is_obj_array(arr):
+    if isinstance(arr, pymdp.tensors.Tensors):
+        return True
     return arr.dtype == "object"
 
 def to_obj_array(arr):
