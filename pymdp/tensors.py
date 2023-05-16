@@ -12,7 +12,7 @@ class Tensors:
         self.variables = variables # dict of factor name -> list of variables
         self.categories = categories # dict of variable name -> list of categories
 
-    def __getitem__(self, args):
+    def _get_indices(self, args):
         if not isinstance(args, tuple):
             args = (args,)
         indices = []
@@ -29,10 +29,21 @@ class Tensors:
                     factor = self.factors[indices[0]]
                     variable = self.variables[factor][i-1]
                     indices.append(self.categories[variable].index(arg))
-        
+        return indices
+               
+    def __getitem__(self, args):
+        indices = self._get_indices(args)
         if len(indices) == 1:
             return self.array[indices[0]]
         return self.array[indices[0]][tuple(indices[1:])]
+    
+    def __setitem__(self, args, value):
+        indices = self._get_indices(args)
+        if len(indices) == 1:
+            self.array[indices[0]] = value
+        else:
+            arr = self.array[indices[0]]
+            arr[tuple(indices[1:])] = value
     
     def __len__(self):
         return len(self.array)

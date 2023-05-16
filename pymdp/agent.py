@@ -96,8 +96,7 @@ class Agent(object):
         self.A = utils.to_obj_array(A)
         if descriptor is not None:
             # merge descriptor['states'] and descriptor['outcomes'] dicts
-            categories = {**descriptor['states'], **descriptor['outcomes']}
-            self.A = tensors.Tensors(self.A, descriptor['A']['modalities'], descriptor['A']['variables'], categories)
+            self.A = tensors.Tensors(self.A, descriptor['A']['modalities'], descriptor['A']['variables'], descriptor['categories'])
 
         assert utils.is_normalized(self.A), "A matrix is not normalized (i.e. A[m].sum(axis = 0) must all equal 1.0 for all modalities)"
 
@@ -115,6 +114,9 @@ class Agent(object):
             )
 
         self.B = utils.to_obj_array(B)
+        if descriptor is not None:
+            # merge descriptor['states'] and descriptor['outcomes'] dicts
+            self.B = tensors.Tensors(self.B, descriptor['B']['actions'], descriptor['B']['variables'], descriptor['categories'])
 
         assert utils.is_normalized(self.B), "B matrix is not normalized (i.e. B[f].sum(axis = 0) must all equal 1.0 for all factors)"
 
@@ -217,6 +219,11 @@ class Agent(object):
         else:
             self.C = self._construct_C_prior()
 
+        if descriptor is not None:
+            # we have a prior for each A modality
+            self.C = tensors.Tensors(self.C, descriptor['outcomes'], {o : [o,] for o in descriptor['outcomes']}, descriptor['categories'])
+
+
         # Construct prior over hidden states (uniform if not specified)
     
         if D is not None:
@@ -237,6 +244,10 @@ class Agent(object):
                 self.D = self._construct_D_prior()
 
         assert utils.is_normalized(self.D), "D vector is not normalized (i.e. D[f].sum() must all equal 1.0 for all factors)"
+
+        if descriptor is not None:
+            self.D = tensors.Tensors(self.D, descriptor['states'], {s : [s,] for s in descriptor['states']}, descriptor['categories'])
+
 
         # Assigning prior parameters on initial hidden states (pD vectors)
         self.pD = pD
