@@ -97,6 +97,9 @@ class Agent(object):
         if descriptor is not None:
             # merge descriptor['states'] and descriptor['outcomes'] dicts
             self.A = tensors.Tensors(self.A, descriptor['A']['modalities'], descriptor['A']['variables'], descriptor['categories'])
+            A_factor_list = []
+            for m in descriptor['A']['modalities']:
+                A_factor_list.append([descriptor['states'].index(v) for v in descriptor['A']['variables'][m][1:]])
 
         assert utils.is_normalized(self.A), "A matrix is not normalized (i.e. A[m].sum(axis = 0) must all equal 1.0 for all modalities)"
 
@@ -116,7 +119,11 @@ class Agent(object):
         self.B = utils.to_obj_array(B)
         if descriptor is not None:
             # merge descriptor['states'] and descriptor['outcomes'] dicts
-            self.B = tensors.Tensors(self.B, descriptor['B']['actions'], descriptor['B']['variables'], descriptor['categories'])
+            self.B = tensors.Tensors(self.B, descriptor['states'], descriptor['B']['variables'], descriptor['categories'])
+            B_factor_list = []
+            for s in descriptor['states']:
+                B_factor_list.append([descriptor['states'].index(v) for v in descriptor['B']['variables'][s][1:-1]])
+
 
         assert utils.is_normalized(self.B), "B matrix is not normalized (i.e. B[f].sum(axis = 0) must all equal 1.0 for all factors)"
 
