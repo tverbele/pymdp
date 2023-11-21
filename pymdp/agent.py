@@ -129,6 +129,7 @@ class Agent(object):
             self.num_controls = num_controls
 
         # checking that `A_factor_list` and `B_factor_list` are consistent with `num_factors`, `num_states`, and lagging dimensions of `A` and `B` tensors
+        self.factorized = False
         if A_factor_list == None:
             self.A_factor_list = self.num_modalities * [list(range(self.num_factors))] # defaults to having all modalities depend on all factors
             for m in range(self.num_modalities):
@@ -137,6 +138,7 @@ class Agent(object):
                 if self.pA != None:
                     assert self.pA[m].shape[1:] == factor_dims, f"Please input an `A_factor_list` whose {m}-th indices pick out the hidden state factors that line up with lagging dimensions of pA{m}..." 
         else:
+            self.factorized = True
             for m in range(self.num_modalities):
                 assert max(A_factor_list[m]) <= (self.num_factors - 1), f"Check modality {m} of A_factor_list - must be consistent with `num_states` and `num_factors`..."
                 factor_dims = tuple([self.num_states[f] for f in A_factor_list[m]])
@@ -164,6 +166,7 @@ class Agent(object):
                 if self.pB != None:
                     assert self.pB[f].shape[1:-1] == factor_dims, f"Please input a `B_factor_list` whose {f}-th indices pick out the hidden state factors that line up with the all-but-final lagging dimensions of pB{f}..." 
         else:
+            self.factorized = True
             for f in range(self.num_factors):
                 assert max(B_factor_list[f]) <= (self.num_factors - 1), f"Check factor {f} of B_factor_list - must be consistent with `num_states` and `num_factors`..."
                 factor_dims = tuple([self.num_states[f] for f in B_factor_list[f]])
@@ -598,11 +601,13 @@ class Agent(object):
         """
 
         if self.inference_algo == "VANILLA":
-            q_pi, G = control.update_posterior_policies(
+            q_pi, G = control.update_posterior_policies_factorized(
                 self.qs,
                 self.A,
                 self.B,
                 self.C,
+                self.A_factor_list,
+                self.B_factor_list,
                 self.policies,
                 self.use_utility,
                 self.use_states_info_gain,
@@ -610,9 +615,12 @@ class Agent(object):
                 self.pA,
                 self.pB,
                 E = self.E,
+                I = self.I,
                 gamma = self.gamma
             )
         elif self.inference_algo == "MMP":
+            if self.factorized:
+                raise NotImplementedError("Factorized inference not implemented for MMP")
 
             future_qs_seq = self.get_future_qs()
 
@@ -642,72 +650,6 @@ class Agent(object):
         self.G = G
         return q_pi, G
     
-    def infer_policies_factorized(self):
-        """
-        Perform policy inference by optimizing a posterior (categorical) distribution over policies.
-        This distribution is computed as the softmax of ``G * gamma + lnE`` where ``G`` is the negative expected
-        free energy of policies, ``gamma`` is a policy precision and ``lnE`` is the (log) prior probability of policies.
-        This function returns the posterior over policies as well as the negative expected free energy of each policy.
-        In this version of the function, the expected free energy of policies is computed using known factorized structure 
-        in the model, which speeds up computation (particular the state information gain calculations).
-
-        Returns
-        ----------
-        q_pi: 1D ``numpy.ndarray``
-            Posterior beliefs over policies, i.e. a vector containing one posterior probability per policy.
-        G: 1D ``numpy.ndarray``
-            Negative expected free energies of each policy, i.e. a vector containing one negative expected free energy per policy.
-        """
-
-        if self.inference_algo == "VANILLA":
-            q_pi, G = control.update_posterior_policies_factorized(
-                self.qs,
-                self.A,
-                self.B,
-                self.C,
-                self.A_factor_list,
-                self.B_factor_list,
-                self.policies,
-                self.use_utility,
-                self.use_states_info_gain,
-                self.use_param_info_gain,
-                self.pA,
-                self.pB,
-                E = self.E,
-                I = self.I,
-                gamma = self.gamma
-            )
-        elif self.inference_algo == "MMP":
-            Raise(NotImplementedError("Factorized inference not implemented for MMP"))
-
-        #     future_qs_seq = self.get_future_qs()
-
-        #     q_pi, G = control.update_posterior_policies_full(
-        #         future_qs_seq,
-        #         self.A,
-        #         self.B,
-        #         self.C,
-        #         self.policies,
-        #         self.use_utility,
-        #         self.use_states_info_gain,
-        #         self.use_param_info_gain,
-        #         self.latest_belief,
-        #         self.pA,
-        #         self.pB,
-        #         F = self.F,
-        #         E = self.E,
-        #         gamma = self.gamma
-        #     )
-
-        if hasattr(self, "q_pi_hist"):
-            self.q_pi_hist.append(q_pi)
-            if len(self.q_pi_hist) > self.inference_horizon:
-                self.q_pi_hist = self.q_pi_hist[-(self.inference_horizon-1):]
-
-        self.q_pi = q_pi
-        self.G = G
-        return q_pi, G
-
     def sample_action(self):
         """
         Sample or select a discrete action from the posterior over control states.
